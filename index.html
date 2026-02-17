@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
     <title>JS Pro IDE - Dev Mode</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.7/ace.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.7/ext-language_tools.js"></script>
@@ -21,12 +21,16 @@
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
+        /* FIX 1: Lock Body to Viewport */
         body {
             font-family: 'Segoe UI', Menlo, monospace;
             background-color: var(--bg-dark);
             color: var(--text-main);
-            height: 100vh;
-            height: 100dvh;   
+            position: fixed; /* CRITICAL: Prevents scroll-up on keyboard open */
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
             display: flex;
             flex-direction: column;
             overflow: hidden;
@@ -122,8 +126,8 @@
             display: flex;
             flex: 1;
             overflow: hidden;
-            height: calc(100vh - 50px); 
-            height: calc(100dvh - 50px);
+            /* JS will override this, but good fallback */
+            height: calc(100% - 50px); 
             width: 100%;
             position: relative;
         }
@@ -159,7 +163,6 @@
             flex-direction: column;
             background: var(--bg-dark);
             border: 1px solid var(--border); 
-            /* Border handling is dynamic in JS/Layout classes now */
             border-right: none;
             border-bottom: none;
             position: relative;
@@ -174,11 +177,10 @@
             height: 32px; 
             background: var(--panel-bg);
             border-bottom: 1px solid var(--border);
-            /* border-top removed here, handled by container border */
             display: flex;
             align-items: center;
             justify-content: center;
-            cursor: pointer; /* Default cursor, changed by JS */
+            cursor: pointer; 
             user-select: none;
             flex-shrink: 0;
         }
@@ -237,10 +239,8 @@
         .log-system { color: var(--text-muted); font-style: italic; opacity: 0.7; padding: 5px 0; border-bottom: 1px dashed var(--border); }
 
         /* --- LAYOUT SPECIFIC BORDERS --- */
-        /* By default (Right Layout) */
         .console-container { border-left: 1px solid var(--border); border-top: none; }
         
-        /* Bottom Layout */
         .layout-bottom .console-container { 
             border-left: none; 
             border-top: 1px solid var(--border); 
@@ -249,7 +249,6 @@
             max-width: 100%;
         }
         
-        /* Left Layout */
         .layout-side.left-bar .console-container {
             border-left: none;
             border-right: 1px solid var(--border);
@@ -291,7 +290,7 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            z-index: 10;
+            z-index: 999; /* Ensure high Z-Index for keyboard overlap */
             flex-shrink: 0;
         }
 
@@ -486,6 +485,23 @@ console.log("The answer is: " + number);
             }, 1000);
         });
 
+        // --- KEYBOARD FIX (VISUAL VIEWPORT API) ---
+        // This effectively listens to the keyboard opening/closing
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', () => {
+                const height = window.visualViewport.height;
+                // Force Main Layout to match visible area minus Header (50px)
+                const headerHeight = 50; 
+                document.getElementById('main-layout').style.height = `${height - headerHeight}px`;
+                
+                // Ensure we scroll to top so header isn't pushed off
+                window.scrollTo(0, 0);
+                
+                // Redraw Editor
+                editor.resize();
+            });
+        }
+
         // --- ROBUST CONSOLE RESIZE LOGIC ---
         const consoleBox = document.getElementById('console-box');
         const consoleHandle = document.getElementById('console-handle');
@@ -505,10 +521,10 @@ console.log("The answer is: " + number);
 
             if (isCollapsed) {
                 if (isColumn) handleIcon.textContent = "▲"; // Open Up
-                else handleIcon.textContent = isLeft ? "▶" : "◀"; // Open Right or Left
+                else handleIcon.textContent = isLeft ? "▶" : "◀"; 
             } else {
                 if (isColumn) handleIcon.textContent = "▼"; // Close Down
-                else handleIcon.textContent = isLeft ? "◀" : "▶"; // Close Left or Right
+                else handleIcon.textContent = isLeft ? "◀" : "▶"; 
             }
             
             // Update Cursor Style
@@ -516,7 +532,6 @@ console.log("The answer is: " + number);
             else consoleHandle.style.cursor = "col-resize";
         }
 
-        // Init icon
         updateConsoleIcon();
 
         // Bind Events
@@ -534,7 +549,6 @@ console.log("The answer is: " + number);
                 startY = e.clientY;
             }
             
-            // Determine orientation based on COMPUTED STYLE, not just screen width
             const style = window.getComputedStyle(layoutEl);
             const isColumn = style.flexDirection === 'column';
 
@@ -564,7 +578,6 @@ console.log("The answer is: " + number);
             let diffX = startX - currentX;
             let diffY = startY - currentY; 
             
-            // Threshold Check
             if (!isDragging && (Math.abs(diffX) > 5 || Math.abs(diffY) > 5)) {
                 isDragging = true;
             }
@@ -573,29 +586,24 @@ console.log("The answer is: " + number);
             
             if (e.cancelable) e.preventDefault(); 
 
-            // Logic Switch based on Layout Mode
             const style = window.getComputedStyle(layoutEl);
             const isColumn = style.flexDirection === 'column';
             const isLeft = layoutEl.classList.contains('left-bar');
 
             if (isColumn) {
-                // Bottom Layout: Drag UP (positive diffY) increases height
                 let newHeight = startDim + diffY;
                 if (newHeight < 32) newHeight = 32;
-                if (newHeight > window.innerHeight * 0.8) newHeight = window.innerHeight * 0.8;
+                // Limit height based on Visual Viewport if available
+                const maxH = (window.visualViewport ? window.visualViewport.height : window.innerHeight) * 0.8;
+                if (newHeight > maxH) newHeight = maxH;
                 
                 consoleBox.style.height = newHeight + 'px';
                 lastValidSize = newHeight + 'px';
             } else {
-                // Side Layouts
                 let newWidth;
-                
                 if (isLeft) {
-                    // Left Layout: Drag RIGHT (negative diffX) increases width
-                    // So we invert diffX: (currentX - startX) -> which is -diffX
                     newWidth = startDim - diffX;
                 } else {
-                    // Right Layout: Drag LEFT (positive diffX) increases width
                     newWidth = startDim + diffX;
                 }
 
@@ -623,7 +631,6 @@ console.log("The answer is: " + number);
 
         function toggleConsoleState() {
             isCollapsed = !isCollapsed;
-            
             const style = window.getComputedStyle(layoutEl);
             const isColumn = style.flexDirection === 'column';
 
@@ -734,7 +741,6 @@ console.log("The answer is: " + number);
 
         function clearConsole() {
             outputDiv.innerHTML = '<div class="log-system">Console cleared.</div>';
-            // Don't reset status if currently running async
         }
 
         // --- QUICK BAR ---
@@ -778,12 +784,11 @@ console.log("The answer is: " + number);
             keysContainer.appendChild(btn);
         });
 
-        let layoutMode = 0; // 0=Bottom, 1=Right, 2=Left
+        let layoutMode = 0; 
         function cycleLayout() {
             layoutMode = (layoutMode + 1) % 3;
             layoutEl.className = '';
             
-            // Clear dimensions
             consoleBox.style.width = '';
             consoleBox.style.height = '';
             lastValidSize = null; 

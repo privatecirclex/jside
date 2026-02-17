@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>JS Pro IDE - Dev Mode</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.7/ace.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.7/ext-language_tools.js"></script>
+    <style>
+        :root {
+            --bg-dark: #0f111a;
+            --panel-bg: #1a1d29;
+            --accent: #3b82f6;
+            --text-main: #e2e8f0;
+            --text-muted: #94a3b8;
+            --border: #2d3748;
+            --error: #ef4444;
+            --success: #10b981;
+            --warning: #f59e0b;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Menlo, monospace;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            height: 100vh;
+            height: 100dvh;   
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            overscroll-behavior: none; 
+        }
+
+        /* Top Navigation Bar */
+        header {
+            height: 50px;
+            background: rgba(26, 29, 41, 0.95);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 15px;
+            backdrop-filter: blur(10px);
+            flex-shrink: 0; 
+            z-index: 20;
+        }
+
+        .brand {
+            font-weight: 700;
+            letter-spacing: 1px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.1rem;
+        }
+        
+        .brand span { color: var(--accent); }
+
+        .toolbar {
+            display: flex;
+            gap: 8px;
+        }
+
+        button {
+            padding: 8px 14px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-run {
+            background: var(--accent);
+            color: white;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+        .btn-run:hover { background: #2563eb; transform: translateY(-1px); }
+
+        .btn-clear {
+            background: transparent;
+            color: var(--text-muted);
+            border: 1px solid var(--border);
+        }
+        .btn-clear:hover { background: rgba(255,255,255,0.05); color: var(--text-main); }
+
+        /* Icon Groups */
+        .btn-group {
+            display: flex;
+            background: rgba(255,255,255,0.05);
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            overflow: hidden; 
+        }
+
+        .btn-icon {
+            background: transparent;
+            color: var(--text-muted);
+            padding: 8px 12px;
+            border-radius: 0;
+            font-size: 1rem;
+            line-height: 1;
+        }
+        
+        .btn-icon:hover {
+            background: rgba(255,255,255,0.1);
+            color: var(--text-main);
+        }
+        
+        .btn-icon + .btn-icon {
+            border-left: 1px solid var(--border);
+        }
+
+        /* Main Workspace */
+        #main-layout {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            height: calc(100vh - 50px); 
+            height: calc(100dvh - 50px);
+            width: 100%;
+            position: relative;
+        }
+
+        .workspace {
+            display: flex;
+            flex: 1;
+            position: relative;
+            height: 100%; 
+            width: 100%; 
+            min-height: 0; 
+            min-width: 0;
+        }
+
+        /* Editor Section */
+        .editor-container {
+            flex: 1;
+            position: relative;
+            height: 100%;
+            min-width: 0; /* Flexbox safety */
+        }
+
+        #editor {
+            position: absolute;
+            top: 0; right: 0; bottom: 0; left: 0;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        /* --- CONSOLE CONTAINER --- */
+        .console-container {
+            display: flex;
+            flex-direction: column;
+            background: var(--bg-dark);
+            border: 1px solid var(--border); 
+            /* Border handling is dynamic in JS/Layout classes now */
+            border-right: none;
+            border-bottom: none;
+            position: relative;
+            z-index: 5;
+            /* Default Desktop */
+            width: 40%; 
+            min-width: 40px; 
+            max-width: 80%;
+        }
+
+        .console-header {
+            height: 32px; 
+            background: var(--panel-bg);
+            border-bottom: 1px solid var(--border);
+            /* border-top removed here, handled by container border */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer; /* Default cursor, changed by JS */
+            user-select: none;
+            flex-shrink: 0;
+        }
+        
+        .handle-icon {
+            font-size: 12px;
+            color: var(--accent);
+            transition: transform 0.3s;
+        }
+
+        .console-title {
+            font-size: 11px;
+            font-weight: bold;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            margin-left: 10px;
+            text-transform: uppercase;
+            white-space: nowrap;
+            overflow: hidden;
+        }
+
+        /* COLLAPSED STATE */
+        .console-container.collapsed {
+            width: 35px !important;
+            min-width: 35px !important;
+            flex: none !important;
+            overflow: hidden;
+        }
+
+        .console-container.collapsed .console-title,
+        .console-container.collapsed #console-output {
+            display: none !important;
+        }
+
+        #console-output {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 13px;
+            background: var(--bg-dark);
+        }
+
+        /* Console Logs */
+        .log-entry {
+            padding: 4px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+            white-space: pre-wrap;
+            word-break: break-all;
+            line-height: 1.4;
+        }
+        
+        .log-info { color: var(--text-main); }
+        .log-warn { color: var(--warning); background: rgba(245, 158, 11, 0.05); padding: 2px 4px; border-radius: 2px; }
+        .log-error { color: #fca5a5; background: rgba(239, 68, 68, 0.1); padding: 4px; border-left: 3px solid var(--error); }
+        .log-system { color: var(--text-muted); font-style: italic; opacity: 0.7; padding: 5px 0; border-bottom: 1px dashed var(--border); }
+
+        /* --- LAYOUT SPECIFIC BORDERS --- */
+        /* By default (Right Layout) */
+        .console-container { border-left: 1px solid var(--border); border-top: none; }
+        
+        /* Bottom Layout */
+        .layout-bottom .console-container { 
+            border-left: none; 
+            border-top: 1px solid var(--border); 
+            width: 100% !important;
+            height: 35%; /* Default Height */
+            max-width: 100%;
+        }
+        
+        /* Left Layout */
+        .layout-side.left-bar .console-container {
+            border-left: none;
+            border-right: 1px solid var(--border);
+        }
+
+        /* --- MOBILE FORCE OVERRIDES --- */
+        @media (max-width: 768px) {
+            .workspace { flex-direction: column !important; }
+            
+            .editor-container {
+                border-right: none;
+                flex: 1; 
+            }
+
+            .console-container {
+                width: 100% !important;
+                max-width: 100%;
+                border-left: none !important;
+                border-right: none !important;
+                border-top: 1px solid var(--border);
+                height: 35%; 
+                min-height: 32px;
+                max-height: 80%;
+                flex: none; 
+            }
+
+            .console-header { cursor: row-resize; }
+            
+            .console-container.collapsed {
+                height: 32px !important; 
+                width: 100% !important;
+            }
+        }
+
+        /* --- QUICK BAR & LAYOUT MODES --- */
+        .quick-bar {
+            background: var(--panel-bg);
+            border-color: var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            z-index: 10;
+            flex-shrink: 0;
+        }
+
+        /* Bottom Mode (Default) */
+        .layout-bottom { flex-direction: column; }
+        .layout-bottom .quick-bar {
+            width: 100%;
+            height: 48px;
+            border-top: 1px solid var(--border);
+            flex-direction: row;
+            padding: 0 10px;
+        }
+        .layout-bottom #keys-container {
+            display: flex;
+            flex-direction: row;
+            overflow-x: auto;
+            gap: 8px;
+            padding: 4px 0;
+            width: 100%;
+            scrollbar-width: none; 
+        }
+        .layout-bottom #keys-container::-webkit-scrollbar { display: none; }
+
+        /* Side Mode */
+        .layout-side { flex-direction: row; }
+        .layout-side .quick-bar {
+            width: 50px;
+            height: 100%;
+            border-left: 1px solid var(--border);
+            flex-direction: column;
+            padding: 10px 0;
+        }
+        .layout-side #keys-container {
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            gap: 8px;
+            width: 100%;
+            align-items: center;
+        }
+
+        /* Left Side Variant */
+        .layout-side.left-bar { flex-direction: row-reverse; }
+        .layout-side.left-bar .quick-bar { border-left: none; border-right: 1px solid var(--border); }
+
+        /* Keys */
+        .code-key {
+            background: #334155;
+            color: var(--text-main);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-family: monospace;
+            font-weight: bold;
+            font-size: 13px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+            min-width: 40px;
+            height: 36px;
+            flex-shrink: 0;
+            transition: transform 0.1s;
+        }
+        .code-key:active { background: var(--accent); border-color: var(--accent); transform: scale(0.95); }
+
+        .bar-handle {
+            width: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: var(--text-muted);
+            font-size: 18px;
+            padding: 0 10px;
+        }
+        .layout-side .bar-handle { margin-top: auto; padding: 10px 0; border-top: 1px solid var(--border); width: 100%; }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-dark); }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+        .ace_scroller::-webkit-scrollbar { display: none; width: 0; }
+
+        /* Landscape Mobile Fix */
+        @media (orientation: landscape) and (max-height: 500px) {
+            #main-layout { flex-direction: row !important; }
+            .console-container { width: 35% !important; height: 100% !important; border-top: none !important; border-left: 1px solid var(--border) !important; }
+            .quick-bar { width: 45px !important; flex-direction: column; height: 100%; }
+            #keys-container { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="brand">
+            <span>⚡</span> JS IDE 
+            <small id="status-indicator" style="color:var(--success); margin-left:10px; font-weight:400; font-size: 0.8rem;">● Ready</small>
+        </div>
+
+        <div class="toolbar">
+            <div class="btn-group">
+                <button class="btn-icon" onclick="editor.undo()" title="Undo">↩</button>
+                <button class="btn-icon" onclick="editor.redo()" title="Redo">↪</button>
+            </div>
+            
+            <div class="btn-group">
+                <button class="btn-icon" onclick="changeFontSize(1)" title="Zoom In">A+</button>
+                <button class="btn-icon" onclick="changeFontSize(-1)" title="Zoom Out">A-</button>
+            </div>
+
+            <button class="btn-clear" onclick="clearConsole()">Clear</button>
+            <button class="btn-run" onclick="runCode()">▶ Run</button>
+        </div>
+    </header>
+
+    <div id="main-layout" class="layout-bottom">
+        
+        <div class="workspace" id="workspace-area">
+            <div class="editor-container">
+                <div id="editor">// Welcome to your JS IDE!
+// Write your JavaScript below and click "Run Code".
+
+let greeting = "Hello, Developer!";
+let number = 42;
+
+console.log(greeting);
+console.log("The answer is: " + number);
+
+// Try making an error to see the debugger:
+// console.log(unknownVariable); 
+</div>
+            </div>
+
+            <div class="console-container" id="console-box">
+                <div class="console-header" id="console-handle">
+                    <div class="handle-icon" id="handle-icon">▲</div>
+                    <div class="console-title">TERMINAL</div>
+                </div>
+                <div id="console-output">
+                    <div class="log-system">System ready... Waiting for input.</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="quick-bar" class="quick-bar">
+            <div id="keys-container"></div>
+            <div class="bar-handle" onclick="cycleLayout()" title="Change Layout">
+                <span id="layout-icon">⬒</span>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // 1. Setup Ace Editor
+        const editor = ace.edit("editor");
+        editor.setTheme("ace/theme/one_dark");
+        editor.session.setMode("ace/mode/javascript");
+        
+        editor.setOptions({
+            fontSize: "14pt",
+            showPrintMargin: false,
+            showGutter: true,
+            highlightActiveLine: true,
+            enableBasicAutocompletion: true,
+            enableLiveAutocompletion: true,
+            behavioursEnabled: true, 
+            wrap: true, 
+            scrollPastEnd: 0.5,
+            fontFamily: "Menlo, Monaco, Consolas, monospace",
+        });
+
+        // 2. Auto-Save Logic
+        const savedCode = localStorage.getItem('js-ide-autosave');
+        if (savedCode) {
+            editor.setValue(savedCode, 1);
+        }
+
+        let saveTimeout;
+        editor.session.on('change', function() {
+            clearTimeout(saveTimeout);
+            saveTimeout = setTimeout(() => {
+                localStorage.setItem('js-ide-autosave', editor.getValue());
+                const statusInd = document.getElementById('status-indicator');
+                if(statusInd) {
+                     statusInd.innerHTML = "● Saved";
+                     statusInd.style.color = "#94a3b8"; 
+                }
+            }, 1000);
+        });
+
+        // --- ROBUST CONSOLE RESIZE LOGIC ---
+        const consoleBox = document.getElementById('console-box');
+        const consoleHandle = document.getElementById('console-handle');
+        const handleIcon = document.getElementById('handle-icon');
+        const outputDiv = document.getElementById('console-output');
+        const layoutEl = document.getElementById('main-layout');
+
+        let isDragging = false;
+        let startX, startY, startDim; 
+        let isCollapsed = false;
+        let lastValidSize = null; 
+
+        function updateConsoleIcon() {
+            const style = window.getComputedStyle(layoutEl);
+            const isColumn = style.flexDirection === 'column';
+            const isLeft = layoutEl.classList.contains('left-bar');
+
+            if (isCollapsed) {
+                if (isColumn) handleIcon.textContent = "▲"; // Open Up
+                else handleIcon.textContent = isLeft ? "▶" : "◀"; // Open Right or Left
+            } else {
+                if (isColumn) handleIcon.textContent = "▼"; // Close Down
+                else handleIcon.textContent = isLeft ? "◀" : "▶"; // Close Left or Right
+            }
+            
+            // Update Cursor Style
+            if (isColumn) consoleHandle.style.cursor = "row-resize";
+            else consoleHandle.style.cursor = "col-resize";
+        }
+
+        // Init icon
+        updateConsoleIcon();
+
+        // Bind Events
+        consoleHandle.addEventListener('mousedown', startDrag);
+        consoleHandle.addEventListener('touchstart', startDrag, {passive: false});
+
+        function startDrag(e) {
+            isDragging = false; 
+            
+            if (e.type === 'touchstart') {
+                startX = e.touches[0].clientX;
+                startY = e.touches[0].clientY;
+            } else {
+                startX = e.clientX;
+                startY = e.clientY;
+            }
+            
+            // Determine orientation based on COMPUTED STYLE, not just screen width
+            const style = window.getComputedStyle(layoutEl);
+            const isColumn = style.flexDirection === 'column';
+
+            if (isColumn) {
+                startDim = consoleBox.offsetHeight;
+            } else {
+                startDim = consoleBox.offsetWidth;
+            }
+
+            document.addEventListener('mousemove', doDrag);
+            document.addEventListener('touchmove', doDrag, {passive: false});
+            document.addEventListener('mouseup', stopDrag);
+            document.addEventListener('touchend', stopDrag);
+        }
+
+        function doDrag(e) {
+            let currentX, currentY;
+
+            if(e.type === 'touchmove') {
+                currentX = e.touches[0].clientX;
+                currentY = e.touches[0].clientY;
+            } else {
+                currentX = e.clientX;
+                currentY = e.clientY;
+            }
+
+            let diffX = startX - currentX;
+            let diffY = startY - currentY; 
+            
+            // Threshold Check
+            if (!isDragging && (Math.abs(diffX) > 5 || Math.abs(diffY) > 5)) {
+                isDragging = true;
+            }
+
+            if (!isDragging) return; 
+            
+            if (e.cancelable) e.preventDefault(); 
+
+            // Logic Switch based on Layout Mode
+            const style = window.getComputedStyle(layoutEl);
+            const isColumn = style.flexDirection === 'column';
+            const isLeft = layoutEl.classList.contains('left-bar');
+
+            if (isColumn) {
+                // Bottom Layout: Drag UP (positive diffY) increases height
+                let newHeight = startDim + diffY;
+                if (newHeight < 32) newHeight = 32;
+                if (newHeight > window.innerHeight * 0.8) newHeight = window.innerHeight * 0.8;
+                
+                consoleBox.style.height = newHeight + 'px';
+                lastValidSize = newHeight + 'px';
+            } else {
+                // Side Layouts
+                let newWidth;
+                
+                if (isLeft) {
+                    // Left Layout: Drag RIGHT (negative diffX) increases width
+                    // So we invert diffX: (currentX - startX) -> which is -diffX
+                    newWidth = startDim - diffX;
+                } else {
+                    // Right Layout: Drag LEFT (positive diffX) increases width
+                    newWidth = startDim + diffX;
+                }
+
+                if (newWidth < 40) newWidth = 40;
+                if (newWidth > window.innerWidth * 0.7) newWidth = window.innerWidth * 0.7;
+
+                consoleBox.style.width = newWidth + 'px';
+                lastValidSize = newWidth + 'px'; 
+            }
+            
+            editor.resize();
+        }
+
+        function stopDrag(e) {
+            document.removeEventListener('mousemove', doDrag);
+            document.removeEventListener('touchmove', doDrag);
+            document.removeEventListener('mouseup', stopDrag);
+            document.removeEventListener('touchend', stopDrag);
+
+            if (!isDragging) {
+                toggleConsoleState();
+            }
+            editor.resize();
+        }
+
+        function toggleConsoleState() {
+            isCollapsed = !isCollapsed;
+            
+            const style = window.getComputedStyle(layoutEl);
+            const isColumn = style.flexDirection === 'column';
+
+            if (isCollapsed) {
+                consoleBox.classList.add('collapsed');
+                consoleBox.style.height = '';
+                consoleBox.style.width = '';
+            } else {
+                consoleBox.classList.remove('collapsed');
+                if (lastValidSize) {
+                    if (isColumn) consoleBox.style.height = lastValidSize;
+                    else consoleBox.style.width = lastValidSize;
+                }
+            }
+            updateConsoleIcon();
+            setTimeout(() => editor.resize(), 50);
+        }
+
+        // --- CONSOLE OUTPUT ---
+        const originalLog = console.log;
+        const originalError = console.error;
+        const originalWarn = console.warn;
+        let isLogging = false; 
+
+        function appendToConsole(message, type) {
+            if (isLogging) return; 
+            isLogging = true;
+
+            try {
+                const entry = document.createElement('div');
+                entry.className = `log-entry log-${type}`;
+
+                if (typeof message === 'object' && message !== null) {
+                    try {
+                        entry.textContent = JSON.stringify(message, null, 2);
+                        entry.style.fontFamily = 'monospace';
+                        entry.style.whiteSpace = 'pre';
+                    } catch(e) {
+                        entry.textContent = "[Circular Object]";
+                    }
+                } else {
+                    entry.textContent = String(message);
+                }
+                
+                outputDiv.appendChild(entry);
+                outputDiv.scrollTop = outputDiv.scrollHeight;
+            } catch (err) {
+            } finally {
+                isLogging = false;
+            }
+        }
+
+        console.log = function(...args) {
+            args.forEach(arg => appendToConsole(arg, 'info'));
+            originalLog.apply(console, args);
+        };
+
+        console.error = function(...args) {
+            args.forEach(arg => appendToConsole(arg, 'error'));
+            originalError.apply(console, args);
+        };
+
+        console.warn = function(...args) {
+            args.forEach(arg => appendToConsole(arg, 'warn'));
+            originalWarn.apply(console, args);
+        };
+
+        window.onerror = function(message, source, lineno, colno, error) {
+            console.error(`Error: ${message} (Line ${lineno})`);
+            return true;
+        };
+
+        // --- RUN CODE ---
+        async function runCode() {
+            const statusInd = document.getElementById('status-indicator');
+            statusInd.innerHTML = "● Running...";
+            statusInd.style.color = "#f59e0b";
+
+            if (isCollapsed) toggleConsoleState();
+
+            const code = editor.getValue();
+            appendToConsole("--- Executing ---", "system");
+
+            setTimeout(async () => { 
+                try {
+                    const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
+                    const runFunc = new AsyncFunction(code); 
+                    await runFunc(); 
+                    
+                    statusInd.innerHTML = "● Success";
+                    statusInd.style.color = "#10b981";
+                } catch (err) {
+                    console.error(err.toString());
+                    statusInd.innerHTML = "● Error";
+                    statusInd.style.color = "#ef4444";
+                }
+            }, 10);
+        }
+
+        // --- UTILS ---
+        function changeFontSize(amount) {
+            let currentSize = parseInt(editor.getFontSize());
+            let newSize = currentSize + amount;
+            if (newSize < 10) newSize = 10;
+            if (newSize > 30) newSize = 30;
+            editor.setFontSize(newSize);
+        }
+
+        function clearConsole() {
+            outputDiv.innerHTML = '<div class="log-system">Console cleared.</div>';
+            // Don't reset status if currently running async
+        }
+
+        // --- QUICK BAR ---
+        const keys = [
+            { label: "{", val: "{}" }, 
+            { label: "}", val: "}" },
+            { label: "(", val: "()" }, 
+            { label: ")", val: ")" },
+            { label: "[", val: "[]" }, 
+            { label: "]", val: "]" },
+            { label: ";", val: ";" }, 
+            { label: "=", val: " = " },
+            { label: "=>", val: " => " },
+            { label: "!=", val: " != " },
+            { label: "&&", val: " && " },
+            { label: "||", val: " || " },
+            { label: "let", val: "let " },
+            { label: "const", val: "const " },
+            { label: "func", val: "function() {\n\t\n}" },
+            { label: "log", val: "console.log()" }
+        ];
+
+        const keysContainer = document.getElementById('keys-container');
+        const layoutIcon = document.getElementById('layout-icon');
+
+        keys.forEach(k => {
+            const btn = document.createElement('div');
+            btn.className = 'code-key';
+            btn.textContent = k.label;
+            
+            btn.onclick = (e) => {
+                e.preventDefault();
+                editor.insert(k.val);
+                editor.focus();
+                
+                if (["()", "{}", "[]", '""', "''"].includes(k.val)) {
+                    editor.navigateLeft(1);
+                }
+                if (k.label === "log") { editor.navigateLeft(1); }
+            };
+            keysContainer.appendChild(btn);
+        });
+
+        let layoutMode = 0; // 0=Bottom, 1=Right, 2=Left
+        function cycleLayout() {
+            layoutMode = (layoutMode + 1) % 3;
+            layoutEl.className = '';
+            
+            // Clear dimensions
+            consoleBox.style.width = '';
+            consoleBox.style.height = '';
+            lastValidSize = null; 
+            
+            if (layoutMode === 0) {
+                layoutEl.classList.add('layout-bottom');
+                layoutIcon.textContent = "⬒";
+            } else if (layoutMode === 1) {
+                layoutEl.classList.add('layout-side');
+                layoutIcon.textContent = "◳";
+            } else {
+                layoutEl.classList.add('layout-side', 'left-bar');
+                layoutIcon.textContent = "◧";
+            }
+            
+            setTimeout(() => {
+                editor.resize();
+                updateConsoleIcon();
+            }, 50);
+        }
+    </script>
+</body>
+</html>

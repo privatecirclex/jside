@@ -28,35 +28,65 @@
             overscroll-behavior: none; 
         }
 
-        /* Top Navigation Bar */
+        /* Top Navigation Bar - Upgraded Context/Command Split */
         header {
-            height: 50px;
+            min-height: 50px;
             background: rgba(26, 29, 41, 0.95);
             border-bottom: 1px solid var(--border);
             display: flex;
+            flex-wrap: wrap; /* Allows the top and bottom to split */
             align-items: center;
             justify-content: space-between;
-            padding: 0 15px;
-            backdrop-filter: blur(10px);
-            flex-shrink: 0; 
+            padding: 8px 15px;
+            gap: 10px;
             z-index: 20;
+        }
+
+        /* Default (Tablet/Desktop): Top and Bottom sit side-by-side */
+        .header-top, .header-bottom {
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
 
         .brand {
             font-weight: 700;
-            letter-spacing: 1px;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
             font-size: 1.1rem;
+            white-space: nowrap;
         }
         
-        .brand span { color: var(--accent); }
-
-        .toolbar {
-            display: flex;
-            gap: 8px;
+        .brand span:first-child { color: var(--accent); } 
+        
+        .project-name { 
+            color: var(--text-main); 
+            max-width: 150px; 
+            overflow: hidden;
+            text-overflow: ellipsis; 
+            display: inline-block;
         }
+
+        .header-bottom {
+            flex-wrap: wrap; /* Allows buttons to split into Row 3 if super squished */
+            justify-content: flex-end;
+        }
+
+        /* TIER 2: Mobile Mode (Under 650px width) */
+        @media (max-width: 650px) {
+            .header-top {
+                width: 100%; /* Forces it to take the whole top row */
+                justify-content: space-between; /* Pushes File Manager icon to the far right */
+            }
+            .header-bottom {
+                width: 100%; /* Forces buttons to the second row */
+                justify-content: flex-start; /* Aligns buttons nicely to the left */
+            }
+            .project-name { max-width: 200px; } /* Gives name more room on mobile */
+        }
+
+
 
         button {
             padding: 8px 14px;
@@ -345,7 +375,7 @@
             min-width: 40px;
             height: 36px;
             flex-shrink: 0;
-            transition: transform 0.1s;
+            transition: transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1), background 0.1s;
         }
       .code-key:active { background: var(--accent); border-color: var(--accent); transform: scale(0.95); }
 
@@ -372,130 +402,119 @@
         /* --- ACE EDITOR NATIVE UI OVERRIDES --- */
         /* ========================================= */
         
-        /* 1. Mobile 3-Dot Context Menu */
+        /* 1. The Contextual Dock (Mobile Menu) */
         .ace_mobile-menu {
+            position: absolute !important;
+            top: 10px !important;
+            right: 10px !important;
+            left: auto !important; /* 🛡️ Destroys Ace's hardcoded X coordinate */
+            bottom: auto !important; /* 🛡️ Destroys Ace's hardcoded Y coordinate */
             background-color: var(--panel-bg) !important;
             color: var(--text-main) !important;
             border: 1px solid var(--border) !important;
             border-radius: 8px !important;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5) !important;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.7) !important;
             padding: 6px !important;
             display: flex !important;
+            flex-wrap: wrap !important; /* 🪄 MAGIC: Drops buttons to new rows if squished */
             gap: 6px !important;
             font-family: 'Segoe UI', Menlo, monospace !important;
+            max-width: calc(100vw - 20px) !important; /* Prevents edge clipping */
+            z-index: 9999 !important;
         }
 
         .ace_mobile-button {
             padding: 8px 14px !important;
             border-radius: 4px !important;
-            background-color: transparent !important;
+            background-color: rgba(255, 255, 255, 0.02) !important;
             color: var(--text-main) !important;
             font-weight: 600 !important;
             font-size: 0.85rem !important;
-            border: 1px solid transparent !important;
+            border: 1px solid var(--border) !important;
             cursor: pointer !important;
             text-transform: capitalize !important;
             box-shadow: none !important;
+            flex: 1 1 auto !important; /* 🪄 MAGIC: Stretches buttons evenly across rows */
+            text-align: center !important;
         }
 
         .ace_mobile-button:active,
         .ace_mobile-button:hover {
-            background-color: rgba(255, 255, 255, 0.05) !important;
+            background-color: rgba(255, 255, 255, 0.08) !important;
             color: var(--accent) !important;
+            border-color: var(--accent) !important;
         }
-
-        /* 2. Autocomplete Dropdown & Command Palette */
-        .ace_editor.ace_autocomplete {
-            background-color: var(--panel-bg) !important;
-            color: var(--text-main) !important;
-            border: 1px solid var(--border) !important;
-            border-radius: 6px !important;
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6) !important;
-            width: 90vw !important; max-width: 400px !important;
-        }
-
-        /* --- Mute the harsh blue text in the dropdown --- */
-        .ace_editor.ace_autocomplete .ace_completion-meta {
-            color: var(--text-muted) !important;
-            font-style: italic !important;
-            opacity: 0.8 !important;
-        }
-
-        .ace_editor.ace_autocomplete .ace_completion-highlight {
-            color: var(--warning) !important; /* Uses your amber warning color for smooth highlights */
-            text-shadow: none !important;
-        }
-
-        .ace_editor.ace_autocomplete .ace_rightAlignedText {
-            color: var(--text-muted) !important; /* Dims the Ctrl/Alt shortcuts */
-            opacity: 0.6 !important;
-        }
-
-        /* 4. The Command Palette Search Bar */
-        .ace_search {
-            background-color: var(--panel-bg) !important;
-            border: 1px solid var(--border) !important;
-            color: var(--text-main) !important;
-            border-radius: 8px !important;
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6) !important;
-            padding: 6px !important;
-            max-width: 95vw !important; /* Stops it from stretching off-screen */
-        }
-        /* 5. Fix "Hollow Box" Touch Target Bug in Autocomplete */
-        .ace_editor.ace_autocomplete .ace_scroller,
-        .ace_editor.ace_autocomplete .ace_content,
-        .ace_editor.ace_autocomplete .ace_layer,
-        .ace_editor.ace_autocomplete .ace_marker-layer .ace_active-line {
-            width: 100% !important;
-            max-width: 100% !important;
-        }
-        /* 6. Command Palette (Prompt) UI Fix */
-        .ace_prompt_container {
-            background-color: var(--panel-bg) !important;
-            border: 1px solid var(--border) !important;
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6) !important;
-            border-radius: 8px !important;
-            color: var(--text-main) !important;
-            width: 90vw !important;
-            max-width: 400px !important;
-        }
-        /* 7. Custom Mobile Menu Close Button */
+        
+        /* 2. Our Custom 'X' Button seamlessly joins the flex grid */
         .custom-mobile-close {
             padding: 8px 14px !important;
             border-radius: 4px !important;
-            background-color: transparent !important;
-            color: var(--text-muted) !important;
+            background-color: rgba(239, 68, 68, 0.1) !important;
+            color: var(--error) !important;
             font-weight: bold !important;
             font-size: 1.1rem !important;
-            border: none !important;
-            border-left: 1px solid var(--border) !important; /* Subtle divider line */
-            border-top-left-radius: 0 !important;
-            border-bottom-left-radius: 0 !important;
+            border: 1px solid rgba(239, 68, 68, 0.3) !important;
             cursor: pointer !important;
-            margin-left: 4px !important; /* Extra space from the 3 dots */
+            flex: 0 1 auto !important; /* Keeps it small but clickable */
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
         }
 
-        .custom-mobile-close:hover,
-        .custom-mobile-close:active {
-            background-color: rgba(239, 68, 68, 0.1) !important; /* Very subtle red tint */
-            color: var(--error) !important;
+        /* 3. Fluid Search & Replace Box (PS UI) */
+        .ace_search {
+            position: absolute !important;
+            top: 70px !important; /* 🪄 Pushes it down just enough to clear the menu */
+            right: 10px !important;
+            background-color: var(--panel-bg) !important;
+            border: 1px solid var(--border) !important;
+            color: var(--text-main) !important;
+            border-radius: 8px !important;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.7) !important;
+            padding: 10px !important;
+            max-width: calc(100vw - 20px) !important;
+            display: flex !important;
+            flex-direction: column !important; /* Stacks search and replace bars */
+            gap: 8px !important;
+            z-index: 9999 !important;
+        }
+        
+        .ace_search_form, .ace_replace_form {
+            display: flex !important;
+            flex-wrap: wrap !important;
+            gap: 6px !important;
+            width: 100% !important;
         }
 
-        /* Target the actual input field inside the prompt */
-        .ace_prompt_container .ace_prompt_input,
-        .ace_prompt_container input {
-            background-color: var(--bg-dark) !important;
-            color: var(--text-main) !important;
-            border: 1px solid var(--border) !important;
-            border-radius: 4px !important;
-            padding: 8px !important;
-            outline: none !important;
-            font-family: 'Segoe UI', Menlo, monospace !important;
-            width: calc(100% - 16px) !important;
-            margin: 8px !important;
+        /* 🛡️ Give the top row some right-padding so the Close button doesn't block the input */
+        .ace_search_form {
+            padding-right: 35px !important; 
+        }
+
+        /* 5. Fix the Broken Search Close Button */
+        .ace_searchbtn_close {
+            position: absolute !important;
+            top: 6px !important;
+            right: 6px !important;
+            width: 30px !important;
+            height: 30px !important;
+            background-color: rgba(239, 68, 68, 0.1) !important;
+            color: var(--error) !important;
+            border: 1px solid rgba(239, 68, 68, 0.3) !important;
+            border-radius: 6px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            cursor: pointer !important;
+            z-index: 10 !important;
+            background-image: none !important; /* Kills Ace's default tiny icon */
+        }
+        
+        .ace_searchbtn_close::after {
+            content: '×' !important;
+            font-size: 1.4rem !important;
+            font-weight: bold !important;
+            line-height: 1 !important;
         }
 
         .ace_search_field {
@@ -503,37 +522,68 @@
             color: var(--text-main) !important;
             border: 1px solid var(--border) !important;
             border-radius: 4px !important;
-            padding: 6px 10px !important;
+            padding: 8px 10px !important;
+            flex: 1 1 100% !important; /* Forces input to take full width on mobile */
+            min-width: 150px !important;
         }
 
         .ace_searchbtn {
-            background-color: transparent !important;
-            color: var(--text-muted) !important;
-            border: 1px solid var(--border) !important;
-            border-radius: 4px !important;
-            padding: 4px !important;
-        }
-
-        .ace_searchbtn:hover {
             background-color: rgba(255, 255, 255, 0.05) !important;
             color: var(--text-main) !important;
+            border: 1px solid var(--border) !important;
+            border-radius: 4px !important;
+            padding: 8px 12px !important;
+            flex: 1 1 auto !important; /* Buttons share the remaining space evenly */
+            cursor: pointer !important;
+            font-weight: 600 !important;
         }
 
-        /* The highlighted active row in the autocomplete dropdown */
-        .ace_editor.ace_autocomplete .ace_marker-layer .ace_active-line {
-            background-color: rgba(255, 255, 255, 0.1) !important;
+        .ace_searchbtn:hover { background-color: var(--accent) !important; color: #fff !important; }
+
+        /* 4. Fluid Command Palette & Autocomplete */
+        .ace_editor.ace_autocomplete, .ace_prompt_container {
+            background-color: var(--panel-bg) !important;
+            color: var(--text-main) !important;
+            border: 1px solid var(--border) !important;
+            border-radius: 8px !important;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8) !important;
+            width: 90vw !important; 
+            max-width: 400px !important;
+            max-height: 40vh !important; /* 🛡️ Stops it from dropping below the keyboard */
         }
 
-        /* 3. Floating Tooltips (Errors, Info, etc.) */
+        .ace_prompt_container .ace_prompt_input {
+            background-color: var(--bg-dark) !important;
+            color: var(--text-main) !important;
+            border: 1px solid var(--border) !important;
+            border-radius: 4px !important;
+            padding: 10px !important;
+            outline: none !important;
+            font-family: 'Segoe UI', Menlo, monospace !important;
+            width: calc(100% - 16px) !important;
+            margin: 8px !important;
+        }
+
+        .ace_editor.ace_autocomplete .ace_completion-meta { color: var(--text-muted) !important; opacity: 0.8 !important; }
+        .ace_editor.ace_autocomplete .ace_completion-highlight { color: var(--warning) !important; text-shadow: none !important; }
+        .ace_editor.ace_autocomplete .ace_rightAlignedText { color: var(--text-muted) !important; opacity: 0.6 !important; }
+        .ace_editor.ace_autocomplete .ace_marker-layer .ace_active-line { background-color: rgba(255, 255, 255, 0.1) !important; }
+
+        /* Fix "Hollow Box" Touch Target Bug */
+        .ace_editor.ace_autocomplete .ace_scroller,
+        .ace_editor.ace_autocomplete .ace_content,
+        .ace_editor.ace_autocomplete .ace_layer { width: 100% !important; max-width: 100% !important; }
+        
+        /* Tooltips */
         .ace_tooltip {
             background-color: var(--panel-bg) !important;
             color: var(--text-main) !important;
             border: 1px solid var(--border) !important;
             border-radius: 4px !important;
             padding: 6px 10px !important;
-            font-family: 'Segoe UI', Menlo, monospace !important;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5) !important;
         }
+
 
         /* Landscape Mobile Fix */
         @media (orientation: landscape) and (max-height: 500px) {
@@ -590,34 +640,191 @@
             #main-layout.layout-side #keys-container,
             #main-layout.layout-side.left-bar #keys-container { flex-direction: column !important; }
         }
-        /* --- SORTABLE QUICK BAR STYLES --- */
+                /* --- SORTABLE QUICK BAR STYLES --- */
         
-        /* The state of the button when being held */
+        /* The state of the button when actually being dragged */
         .code-key.dragging {
-            opacity: 0.5;
-            transform: scale(1.1);
-            background: var(--accent) !important;
+            position: fixed !important; /* Escapes the container flow */
+            transform: scale(1.2) !important; /* Magnifies the button */
+            background: var(--warning) !important; /* Amber pop */
+            color: #1a1d29 !important; /* Dark text for high contrast */
             border-color: white !important;
-            z-index: 1000;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            z-index: 9999;
+            opacity: 0.95;
+            pointer-events: none; /* CRITICAL: Lets touch events pass through to find elements below */
+            margin: 0 !important;
+            transition: none !important; /* Snaps instantly to finger */
         }
 
-        /* A "ghost" placeholder that shows where the button will land */
+        /* A "ghost" placeholder that holds the empty space */
         .drag-placeholder {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px dashed var(--border);
+            background: rgba(245, 158, 11, 0.1); /* Subtle amber tint */
+            border: 2px dashed var(--warning);
             border-radius: 4px;
             min-width: 40px;
             height: 36px;
             flex-shrink: 0;
+            transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
         }
 
-        /* Visual feedback during long-press initiation */
+        /* Visual feedback during the 1-second long-press initiation */
         .code-key.lifting {
-            animation: pulse-lift 0.3s ease-in-out;
+            animation: pulse-lift 1s forwards; /* Exactly 1 second */
         }
 
         @keyframes pulse-lift {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.15); }
-            100% { transform: scale(1.1); }
+            0% { transform: scale(1); background: #334155; }
+            50% { transform: scale(0.9); background: var(--accent); } /* Presses in slightly */
+            100% { transform: scale(1.1); background: var(--warning); border-color: var(--warning); color: #1a1d29; } /* Pops out */
         }
+        /* --- COLLAPSIBLE LOG STYLES --- */
+        .obj-container {
+            margin: 4px 0;
+            border-radius: 4px;
+            overflow: hidden;
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .obj-summary {
+            padding: 4px 8px;
+            cursor: pointer;
+            font-size: 12px;
+            color: var(--accent);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            user-select: none;
+        }
+
+        .obj-summary:hover {
+            background: rgba(59, 130, 246, 0.1);
+        }
+
+        .obj-arrow {
+            font-size: 8px;
+            transition: transform 0.2s;
+            display: inline-block;
+        }
+
+        .obj-details {
+            padding: 8px;
+            font-family: 'Menlo', 'Monaco', monospace;
+            font-size: 11px;
+            color: var(--text-muted);
+            border-top: 1px solid var(--border);
+            overflow-x: auto;
+        }
+/* Styling for the Color Picker Quick Bar Key */
+.code-key.color-picker-btn { 
+    background: linear-gradient(135deg, var(--warning), #d97706);
+    border: none;
+    color: #1a1d29;
+    font-size: 16px;
+    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+}
+/* ========================================= */
+/* --- 📁 FILE MANAGER GLASS MODAL --- */
+/* ========================================= */
+.glass-modal {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(15, 17, 26, 0.6);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 9999;
+    display: none; /* Hidden by default */
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.glass-modal.active {
+    display: flex;
+    opacity: 1;
+}
+
+.modal-content {
+    background: var(--panel-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    width: 90%;
+    max-width: 400px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+    overflow: hidden;
+    transform: scale(0.95);
+    transition: transform 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    max-height: 80vh;
+}
+
+.glass-modal.active .modal-content { transform: scale(1); }
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(255,255,255,0.02);
+}
+
+.modal-header h3 { font-size: 1.1rem; font-weight: 600; color: var(--text-main); }
+
+.modal-actions {
+    padding: 15px 20px;
+    display: flex;
+    gap: 10px;
+    border-bottom: 1px solid var(--border);
+}
+
+.modal-actions input {
+    flex: 1;
+    background: var(--bg-dark);
+    border: 1px solid var(--border);
+    color: var(--text-main);
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-family: inherit;
+    outline: none;
+}
+.modal-actions input:focus { border-color: var(--accent); }
+
+.file-list {
+    padding: 10px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.file-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 15px;
+    background: var(--bg-dark);
+    border: 1px solid transparent;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.file-item:hover { background: rgba(255,255,255,0.05); }
+.file-item.active-file { border-color: var(--accent); background: rgba(59, 130, 246, 0.1); }
+
+.file-info { display: flex; flex-direction: column; gap: 4px; pointer-events: none; }
+.file-name { font-weight: 600; font-size: 0.95rem; color: var(--text-main); }
+.file-size { font-size: 0.75rem; color: var(--text-muted); }
+
+.btn-delete {
+    background: transparent;
+    color: var(--text-muted);
+    border: none;
+    padding: 8px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+.btn-delete:hover { background: rgba(239, 68, 68, 0.1); color: var(--error); }

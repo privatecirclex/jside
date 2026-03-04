@@ -10,14 +10,24 @@
 
 </head>
 <body>
+<input type="color" id="native-color-picker" style="position: fixed; top: -1000px; left: -1000px; opacity: 0.01; cursor: pointer;">
 
     <header>
-        <div class="brand">
-            <span>🗃️</span> JS IDE 
-            <small id="status-indicator" style="color:var(--success); margin-left:10px; font-weight:400; font-size: 0.8rem;">● Ready</small>
+        <div class="header-top">
+            <div class="brand">
+                <span>🗃️</span> 
+                <span class="project-name" id="project-name-display">main.js</span> 
+                <small id="status-indicator" style="color:var(--success); margin-left:10px; font-weight:400; font-size: 0.8rem;">● Ready</small>
+            </div>
+            
+            <button class="btn-icon" onclick="openFileManager()" title="Files">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                </svg>
+            </button>
         </div>
 
-        <div class="toolbar">
+        <div class="header-bottom">
             <div class="btn-group">
                 <button class="btn-icon" onclick="editor.undo()" title="Undo">↩</button>
                 <button class="btn-icon" onclick="editor.redo()" title="Redo">↪</button>
@@ -32,6 +42,7 @@
             <button class="btn-run" onclick="runCode()">▶ Run</button>
         </div>
     </header>
+
 
     <div id="main-layout" class="layout-bottom">
         
@@ -69,6 +80,22 @@ console.log("The answer is: " + number);
             </div>
         </div>
 
+    </div>
+    <div id="file-manager-modal" class="glass-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Projects</h3>
+                <button class="btn-icon" onclick="closeFileManager()">✕</button>
+            </div>
+            
+            <div class="modal-actions">
+                <input type="text" id="new-file-name" maxlength="16" placeholder="Name (e.g., app.js)">
+                <button class="btn-run" onclick="createNewFile()">+ New</button>
+            </div>
+
+            <div id="file-list" class="file-list">
+                </div>
+        </div>
     </div>
 
     <script src="script.js"></script>

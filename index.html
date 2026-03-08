@@ -97,8 +97,32 @@ console.log("The answer is: " + number);
                 </div>
         </div>
     </div>
+    
+        <div id="delete-confirm-modal" class="glass-modal">
+        <div class="modal-content delete-modal-content">
+            <div class="modal-header" style="border-bottom: none; padding-bottom: 5px;">
+                <h3 style="color: var(--error);">Delete File</h3>
+            </div>
+            <div class="modal-body" style="padding: 10px 20px 20px; text-align: left;">
+                <p style="color: var(--text-main); font-size: 0.95rem;">
+                    Permanently remove <code id="delete-file-name" style="background: var(--bg-dark); padding: 2px 6px; border-radius: 4px; color: var(--accent); font-family: monospace;"></code>?
+                </p>
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 8px;">This action cannot be undone.</p>
+            </div>
+            
+            <div class="modal-actions delete-actions">
+                <button class="btn-clear" onclick="closeDeleteModal()">Cancel</button>
+                <button id="btn-hold-delete" class="btn-hold-delete">
+                    <span class="delete-text">Hold to Delete</span>
+                    <div class="delete-progress"></div>
+                </button>
+            </div>
+        </div>
+    </div>
+
 
     <script src="script.js"></script>
+    
 
 </body>
 </html>

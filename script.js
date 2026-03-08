@@ -137,18 +137,26 @@
         // --- KEYBOARD FIX (VISUAL VIEWPORT API) ---
         // This effectively listens to the keyboard opening/closing
         if (window.visualViewport) {
-            window.visualViewport.addEventListener('resize', () => {
-                const height = window.visualViewport.height;
-                // Force Main Layout to match visible area minus Header (50px)
-                const headerHeight = 50; 
-                document.getElementById('main-layout').style.height = `${height - headerHeight}px`;
+            const handleViewportChange = () => {
+                // Force the body to exactly match the visible area above the keyboard
+                document.body.style.height = `${window.visualViewport.height}px`;
                 
-                // Ensure we scroll to top so header isn't pushed off
+                // Push the body down if the browser scrolled to keep the cursor in view
+                document.body.style.top = `${window.visualViewport.offsetTop}px`;
+                
+                // Lock scroll to prevent UI tearing
                 window.scrollTo(0, 0);
                 
                 // Redraw Editor
                 editor.resize();
-            });
+            };
+
+            // Listen to both resize (keyboard opening) and scroll (browser pushing UI up)
+            window.visualViewport.addEventListener('resize', handleViewportChange);
+            window.visualViewport.addEventListener('scroll', handleViewportChange);
+            
+            // Fire once on load to establish the baseline
+            handleViewportChange();
         }
 
         // --- ROBUST CONSOLE RESIZE LOGIC ---
@@ -677,7 +685,7 @@
                 // Listeners for Long Press
                 btn.addEventListener('touchstart', startPress, {passive: true});
                 btn.addEventListener('touchend', cancelPress);
-                btn.addEventListener('touchmove', cancelPress); // Cancel if swiped before 1 sec
+                btn.addEventListener('touchcancel', cancelPress); // NEW: Catches system interruptions
                 btn.addEventListener('mousedown', startPress);
                 btn.addEventListener('mouseup', cancelPress);
                 btn.addEventListener('mouseleave', cancelPress); // Cancel if mouse leaves
@@ -1033,7 +1041,10 @@ console.log("The answer is: " + number);
 
             localStorage.setItem('js-ide-projects', JSON.stringify(projects));
             
-            loadProject(name);
+            // --- NEW BEHAVIOR: Stay in Modal ---
+            newFileInput.value = ''; // Clear the input box so it's ready for another
+            renderFileList();        // Refresh the visual list to show the newly created file
+            // Note: We removed loadProject(name) so it doesn't forcefully switch over!
         }
 
         function loadProject(fileName) {
@@ -1053,20 +1064,92 @@ console.log("The answer is: " + number);
             clearConsole();
         }
 
+        // ==========================================
+        // --- 🗑️ SMART DELETE SYSTEM ---
+        // ==========================================
+        let fileToDelete = null;
+
         function deleteProject(fileName) {
-            if (confirm(`Are you sure you want to delete ${fileName}?`)) {
-                delete projects[fileName];
-                delete editSessions[fileName]; // Destroy the file's brain to free up RAM
-                localStorage.setItem('js-ide-projects', JSON.stringify(projects));
-                
-                if (currentProject === fileName) {
-                    currentProject = Object.keys(projects)[0];
-                    localStorage.setItem('js-ide-active-project', currentProject);
-                    // Load the brain of the fallback file
-                    editor.setSession(getOrCreateSession(currentProject));
-                    updateHeaderTitle();
-                }
-                
-                renderFileList();
-            }
+            fileToDelete = fileName;
+            document.getElementById('delete-file-name').textContent = fileName;
+            document.getElementById('delete-confirm-modal').classList.add('active');
         }
+
+        function closeDeleteModal() {
+            document.getElementById('delete-confirm-modal').classList.remove('active');
+            fileToDelete = null;
+            cancelDeleteHold(); // Reset button visually
+        }
+
+        // Close delete modal if clicked outside
+        document.getElementById('delete-confirm-modal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('delete-confirm-modal')) closeDeleteModal();
+        });
+
+        // --- Hold-to-Confirm Animation Engine ---
+        const holdDeleteBtn = document.getElementById('btn-hold-delete');
+        const deleteProgress = holdDeleteBtn.querySelector('.delete-progress');
+        let holdStartTime;
+        let holdAnimFrame;
+        const HOLD_DURATION = 1000; // 1000ms = 1 full second
+
+        function startDeleteHold(e) {
+            if (e.type === 'mousedown' && e.button !== 0) return; // Ignore right clicks
+            if (e.cancelable) e.preventDefault();
+            
+            holdDeleteBtn.classList.add('holding');
+            holdStartTime = performance.now();
+            
+            // This runs 60 times a second for buttery smooth progress bar filling
+            function updateProgress(currentTime) {
+                const elapsed = currentTime - holdStartTime;
+                const progress = Math.min((elapsed / HOLD_DURATION) * 100, 100);
+                
+                deleteProgress.style.width = `${progress}%`;
+                
+                if (progress < 100) {
+                    holdAnimFrame = requestAnimationFrame(updateProgress);
+                } else {
+                    executeDelete(); // BOOM.
+                }
+            }
+            holdAnimFrame = requestAnimationFrame(updateProgress);
+        }
+
+        function cancelDeleteHold() {
+            cancelAnimationFrame(holdAnimFrame);
+            holdDeleteBtn.classList.remove('holding');
+            deleteProgress.style.width = '0%';
+        }
+
+        function executeDelete() {
+            cancelAnimationFrame(holdAnimFrame);
+            
+            // Tactile feedback if the phone supports it
+            if (navigator.vibrate) navigator.vibrate([50, 50, 100]); 
+            
+            // --- ORIGINAL DELETION LOGIC ---
+            const fileName = fileToDelete;
+            delete projects[fileName];
+            delete editSessions[fileName]; 
+            localStorage.setItem('js-ide-projects', JSON.stringify(projects));
+            
+            if (currentProject === fileName) {
+                currentProject = Object.keys(projects)[0];
+                localStorage.setItem('js-ide-active-project', currentProject);
+                editor.setSession(getOrCreateSession(currentProject));
+                updateHeaderTitle();
+            }
+            
+            renderFileList();
+            closeDeleteModal();
+        }
+
+        // Bind the touch & mouse events to the button
+        holdDeleteBtn.addEventListener('mousedown', startDeleteHold);
+        holdDeleteBtn.addEventListener('touchstart', startDeleteHold, {passive: false});
+        
+        holdDeleteBtn.addEventListener('mouseup', cancelDeleteHold);
+        holdDeleteBtn.addEventListener('mouseleave', cancelDeleteHold);
+        holdDeleteBtn.addEventListener('touchend', cancelDeleteHold);
+        holdDeleteBtn.addEventListener('touchcancel', cancelDeleteHold);

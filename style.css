@@ -147,11 +147,9 @@
             display: flex;
             flex: 1;
             overflow: hidden;
-            /* JS will override this, but good fallback */
-            height: calc(100% - 50px); 
             width: 100%;
             position: relative;
-        }
+                }
 
         .workspace {
             display: flex;
@@ -376,6 +374,10 @@
             height: 36px;
             flex-shrink: 0;
             transition: transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1), background 0.1s;
+            
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            touch-action: none;
         }
       .code-key:active { background: var(--accent); border-color: var(--accent); transform: scale(0.95); }
 
@@ -828,3 +830,51 @@
     cursor: pointer;
 }
 .btn-delete:hover { background: rgba(239, 68, 68, 0.1); color: var(--error); }
+/* --- CUSTOM DELETE MODAL --- */
+.delete-modal-content {
+    border-top: 3px solid var(--error); /* Gives a subtle red warning line at the top */
+    max-width: 320px; /* Keep it tight and professional */
+}
+
+.delete-actions {
+    justify-content: flex-end;
+    background: rgba(255, 255, 255, 0.02);
+    border-top: 1px solid var(--border);
+    border-bottom: none;
+}
+
+/* The Hold-to-Delete Button */
+.btn-hold-delete {
+    position: relative;
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--error);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    overflow: hidden;
+    padding: 8px 16px;
+    min-width: 140px;
+    user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    touch-action: none; /* Prevents scrolling while holding */
+}
+
+.btn-hold-delete .delete-text {
+    position: relative;
+    z-index: 2;
+    pointer-events: none;
+    transition: color 0.2s;
+}
+
+/* The red bar that sweeps across */
+.btn-hold-delete .delete-progress {
+    position: absolute;
+    top: 0; left: 0; bottom: 0;
+    width: 0%;
+    background: var(--error);
+    z-index: 1;
+    transition: width 0.1s linear; /* Smooth visual fill */
+}
+
+.btn-hold-delete.holding .delete-text {
+    color: #ffffff; /* Text turns white as the dark red bar fills behind it */
+}
